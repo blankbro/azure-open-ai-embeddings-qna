@@ -32,6 +32,8 @@ code
     └── translator.py
 ```
 
+通过 Mac 系统创建 venv 环境后，需要通过 "source .venv/bin/activate" 激活 venv 环境。 退出当前 venv 环境，直接执行 deactivate 即可。
+
 # BatchProcess（干嘛用的？）
 
 现成的 Docker 镜像：fruocco/oai-batch

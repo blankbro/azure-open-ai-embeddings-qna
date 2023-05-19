@@ -105,6 +105,12 @@ try:
         st.session_state['custom_prompt'] = ""
     if 'custom_temperature' not in st.session_state:
         st.session_state['custom_temperature'] = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
+    if 'top_k' not in st.session_state:
+        st.session_state['top_k'] = 4
+    if 'score_threshold' not in st.session_state:
+        st.session_state['score_threshold'] = 0.4
+    if 'search_type' not in st.session_state:
+        st.session_state['search_type'] = "similarity_limit"
 
     # Set page layout to wide screen and menu item
     menu_items = {
@@ -117,7 +123,11 @@ try:
     }
     st.set_page_config(layout="wide", menu_items=menu_items)
 
-    llm_helper = LLMHelper(custom_prompt=st.session_state.custom_prompt, temperature=st.session_state.custom_temperature)
+    llm_helper = LLMHelper(custom_prompt=st.session_state.custom_prompt,
+                           temperature=st.session_state.custom_temperature,
+                           k=st.session_state.top_k,
+                           score_threshold=st.session_state.score_threshold,
+                           search_type=st.session_state.search_type)
 
     # Get available languages for translation
     available_languages = get_languages()
@@ -129,8 +139,12 @@ try:
     Answer:"""
     custom_prompt_help = """You can configure a custom prompt by adding the variables {summaries} and {question} to the prompt.  
     {summaries} will be replaced with the content of the documents retrieved from the VectorStore.  
-    {question} will be replaced with the user's question.
-        """
+    {question} will be replaced with the user's question."""
+
+    # RediSearch
+    top_k_help = """用来限制从Redis搜索到的最大Chunk数"""
+    score_threshold_help = """用来限制 Chunk 匹配分数"""
+    search_type_help = """similarity_limit 模式下，匹配分数低于 Score threshold，不会返回（有点问题）"""
 
     col1, col2, col3 = st.columns([1,2,1])
     with col1:
@@ -146,8 +160,11 @@ try:
             #     [os.environ['OPENAI_ENGINE']]
             # )
             # st.tokens_response = st.slider("Tokens response length", 100, 500, 400)
-            st.slider("Temperature", min_value=0.0, max_value=1.0, step=0.1, key='custom_temperature')
-            st.text_area("Custom Prompt", key='custom_prompt', on_change=check_variables_in_prompt, placeholder= custom_prompt_placeholder,help=custom_prompt_help, height=150)
+            st.slider("Temperature", key='custom_temperature', min_value=0.0, max_value=1.0, step=0.1)
+            st.text_area("Custom Prompt", key='custom_prompt', on_change=check_variables_in_prompt, placeholder=custom_prompt_placeholder,help=custom_prompt_help, height=150)
+            st.number_input("Top k", key='top_k', min_value=1, step=1, help=top_k_help)
+            st.number_input("Score threshold", key='score_threshold', min_value=0.1, step=0.1, max_value=1.0, help=score_threshold_help)
+            st.selectbox("Search type", key='search_type', options=("""similarity""", """similarity_limit"""), help=search_type_help)
             st.selectbox("Language", [None] + list(available_languages.keys()), key='translation_language')
 
     question = st.text_input("OpenAI Semantic Answer", default_question)
@@ -166,4 +183,5 @@ try:
         st.write(f"{llm_helper.translator.translate(st.session_state['response'], available_languages[st.session_state['translation_language']])}")		
 		
 except Exception:
+    traceback.print_exc()
     st.error(traceback.format_exc())

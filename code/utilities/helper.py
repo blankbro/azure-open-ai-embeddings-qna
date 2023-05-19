@@ -44,6 +44,8 @@ class LLMHelper:
         custom_prompt: str = "",
         vector_store: VectorStore = None,
         k: int = None,
+        score_threshold: float = None,
+        search_type: str = None,
         pdf_parser: AzureFormRecognizerClient = None,
         blob_client: AzureBlobStorageClient = None,
         enable_translation: bool = False,
@@ -64,6 +66,11 @@ class LLMHelper:
         self.deployment_type: str = os.getenv("OPENAI_DEPLOYMENT_TYPE", "Text")
         self.temperature: float = float(os.getenv("OPENAI_TEMPERATURE", 0.7)) if temperature is None else temperature
         self.max_tokens: int = int(os.getenv("OPENAI_MAX_TOKENS", -1)) if max_tokens is None else max_tokens
+        '''
+        回答问题的Prompt
+            custom_prompt 是用户自定义的 Prompt
+            PROMPT 是 customprompt.py 中定义的默认的 PromptTemplate
+        '''
         self.prompt = PROMPT if custom_prompt == '' else PromptTemplate(template=custom_prompt, input_variables=["summaries", "question"])
 
 
@@ -88,7 +95,9 @@ class LLMHelper:
         else:
             self.llm: AzureOpenAI = AzureOpenAI(deployment_name=self.deployment_name, temperature=self.temperature, max_tokens=self.max_tokens) if llm is None else llm
         self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store   
-        self.k : int = 3 if k is None else k
+        self.k : int = 4 if k is None else k
+        self.score_threshold : float = 0.4 if score_threshold is None else score_threshold
+        self.search_type : str = "similarity" if search_type is None else search_type
 
         self.pdf_parser : AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
         self.blob_client: AzureBlobStorageClient = AzureBlobStorageClient() if blob_client is None else blob_client
@@ -162,17 +171,32 @@ class LLMHelper:
                 }, result)))
 
     def get_semantic_answer_lang_chain(self, question, chat_history):
+        # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
         question_generator = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT, verbose=False)
+        '''
+        chain_type 说明
+            "stuff"：这个枚举值可能表示程序将对数据进行一些预处理，以便后续的处理更加高效。
+            "map_reduce"：这个枚举值可能表示程序将使用 MapReduce 算法进行数据处理。这种算法通常适用于大规模数据集，可以在分布式计算环境中运行。
+            "map_rerank"：这个枚举值可能表示程序将使用 MapRerank 算法进行数据处理。这种算法通常用于对搜索结果进行排序，以便展示最相关的结果。
+            "refine"：这个枚举值可能表示程序将对数据进行进一步的精细处理，以提高输出结果的质量。
+        prompt=self.prompt 说明
+            
+        '''
         doc_chain = load_qa_with_sources_chain(self.llm, chain_type="stuff", verbose=True, prompt=self.prompt)
+        # 从向量数据库中进行相似性搜索。最小相似度为0.8，匹配到多个时，取 top self.k，
+        # retriever=self.vector_store.similarity_search_limit_score(query=question, k=self.k, score_threshold=0.8),
+
+
+
         chain = ConversationalRetrievalChain(
-            retriever=self.vector_store.as_retriever(),
+            retriever=self.vector_store.as_retriever(k=self.k, score_threshold=self.score_threshold, search_type=self.search_type),
             question_generator=question_generator,
             combine_docs_chain=doc_chain,
             return_source_documents=True,
             # top_k_docs_for_context= self.k
         )
         result = chain({"question": question, "chat_history": chat_history})
-        context = "\n".join(list(map(lambda x: x.page_content, result['source_documents'])))
+        context = "\n\n".join(list(map(lambda x: x.page_content, result['source_documents'])))
         sources = "\n".join(set(map(lambda x: x.metadata["source"], result['source_documents'])))
 
         container_sas = self.blob_client.get_container_sas()

@@ -1,17 +1,22 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import streamlit as st
 import os
 import traceback
 from utilities.helper import LLMHelper
+from utilities.customprompt import condense_question_prompt_template
+from utilities.customprompt import completion_prompt_template
 
 import logging
+
 logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.WARNING)
+
 
 def check_deployment():
     # Check if the deployment is working
-    #\ 1. Check if the llm is working
+    # \ 1. Check if the llm is working
     try:
         llm_helper = LLMHelper()
         llm_helper.get_completion("Generate a joke!")
@@ -24,7 +29,7 @@ def check_deployment():
             Then restart your application.
             """)
         st.error(traceback.format_exc())
-    #\ 2. Check if the embedding is working
+    # \ 2. Check if the embedding is working
     try:
         llm_helper = LLMHelper()
         llm_helper.embeddings.embed_documents(texts=["This is a test"])
@@ -35,7 +40,7 @@ def check_deployment():
             Then restart your application.
             """)
         st.error(traceback.format_exc())
-    #\ 3. Check if the translation is working
+    # \ 3. Check if the translation is working
     try:
         llm_helper = LLMHelper()
         llm_helper.translator.translate("This is a test", "it")
@@ -46,7 +51,7 @@ def check_deployment():
             Then restart your application.  
             """)
         st.error(traceback.format_exc())
-    #\ 4. Check if the Redis is working with previous version of data
+    # \ 4. Check if the Redis is working with previous version of data
     try:
         llm_helper = LLMHelper()
         if llm_helper.vector_store.check_existing_index("embeddings-index"):
@@ -65,23 +70,39 @@ def check_deployment():
         st.error(traceback.format_exc())
 
 
-def check_variables_in_prompt():
-    # Check if "summaries" is present in the string custom_prompt
-    if "{summaries}" not in st.session_state.custom_prompt:
-        st.warning("""Your custom prompt doesn't contain the variable "{summaries}".  
-        This variable is used to add the content of the documents retrieved from the VectorStore to the prompt.  
-        Please add it to your custom prompt to use the app.  
+def check_variables_in_condense_question_prompt():
+    # Check if "chat_history" is present in the string condense_question_prompt
+    if "{chat_history}" not in st.session_state.condense_question_prompt:
+        st.warning("""Your condense question prompt doesn't contain the variable "{chat_history}".   
+        Please add it to your condense question prompt to use the app.  
         Reverting to default prompt.
         """)
-        st.session_state.custom_prompt = ""
-    if "{question}" not in st.session_state.custom_prompt:
-        st.warning("""Your custom prompt doesn't contain the variable "{question}".  
+        st.session_state.completion_prompt = ""
+    if "{question}" not in st.session_state.completion_prompt:
+        st.warning("""Your condense question prompt doesn't contain the variable "{question}".  
         This variable is used to add the user's question to the prompt.  
-        Please add it to your custom prompt to use the app.  
+        Please add it to your condense question prompt to use the app.  
         Reverting to default prompt.  
         """)
-        st.session_state.custom_prompt = ""
-    
+        st.session_state.completion_prompt = ""
+
+def check_variables_in_completion_prompt():
+    # Check if "summaries" is present in the string completion_prompt
+    if "{summaries}" not in st.session_state.completion_prompt:
+        st.warning("""Your completion prompt doesn't contain the variable "{summaries}".  
+        This variable is used to add the content of the documents retrieved from the VectorStore to the prompt.  
+        Please add it to your completion prompt to use the app.  
+        Reverting to default prompt.
+        """)
+        st.session_state.completion_prompt = ""
+    if "{question}" not in st.session_state.completion_prompt:
+        st.warning("""Your completion prompt doesn't contain the variable "{question}".  
+        This variable is used to add the user's question to the prompt.  
+        Please add it to your completion prompt to use the app.  
+        Reverting to default prompt.  
+        """)
+        st.session_state.completion_prompt = ""
+
 
 @st.cache_data()
 def get_languages():
@@ -89,42 +110,41 @@ def get_languages():
 
 try:
 
-    default_prompt = "" 
-    default_question = "" 
-    default_answer = ""
-
     if 'question' not in st.session_state:
-        st.session_state['question'] = default_question
-    # if 'prompt' not in st.session_state:
-    #     st.session_state['prompt'] = os.getenv("QUESTION_PROMPT", "Please reply to the question using only the information present in the text above. If you can't find it, reply 'Not in the text'.\nQuestion: _QUESTION_\nAnswer:").replace(r'\n', '\n')
+        st.session_state['question'] = ""
     if 'response' not in st.session_state:
-        st.session_state['response'] = default_answer
+        st.session_state['response'] = ""
     if 'context' not in st.session_state:
         st.session_state['context'] = ""
-    if 'custom_prompt' not in st.session_state:
-        st.session_state['custom_prompt'] = ""
-    if 'custom_temperature' not in st.session_state:
-        st.session_state['custom_temperature'] = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
+
+    if 'condense_question_prompt' not in st.session_state:
+        st.session_state['condense_question_prompt'] = os.getenv("CONDENSE_QUESTION_PROMPT", "")
+    if 'completion_prompt' not in st.session_state:
+        st.session_state['completion_prompt'] = os.getenv("COMPLETION_PROMPT", "")
+    if 'temperature' not in st.session_state:
+        st.session_state['temperature'] = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
+
     if 'top_k' not in st.session_state:
-        st.session_state['top_k'] = 4
+        st.session_state['top_k'] = int(os.getenv("REDISEARCH_TOP_K", 4))
     if 'score_threshold' not in st.session_state:
-        st.session_state['score_threshold'] = 0.4
+        st.session_state['score_threshold'] = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2))
     if 'search_type' not in st.session_state:
-        st.session_state['search_type'] = "similarity_limit"
+        st.session_state['search_type'] = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit")
 
     # Set page layout to wide screen and menu item
     menu_items = {
-	'Get help': None,
-	'Report a bug': None,
-	'About': '''
-	 ## Embeddings App
-	 Embedding testing application.
-	'''
+        'Get help': None,
+        'Report a bug': None,
+        'About': '''
+             ## Embeddings App
+             Embedding testing application.
+            '''
     }
     st.set_page_config(layout="wide", menu_items=menu_items)
 
-    llm_helper = LLMHelper(custom_prompt=st.session_state.custom_prompt,
-                           temperature=st.session_state.custom_temperature,
+    llm_helper = LLMHelper(condense_question_prompt=st.session_state.condense_question_prompt,
+                           completion_prompt=st.session_state.completion_prompt,
+                           temperature=st.session_state.temperature,
                            k=st.session_state.top_k,
                            score_threshold=st.session_state.score_threshold,
                            search_type=st.session_state.search_type)
@@ -132,25 +152,11 @@ try:
     # Get available languages for translation
     available_languages = get_languages()
 
-    # Custom prompt variables
-    custom_prompt_placeholder = """{summaries}  
-    Please reply to the question using only the text above.  
-    Question: {question}  
-    Answer:"""
-    custom_prompt_help = """You can configure a custom prompt by adding the variables {summaries} and {question} to the prompt.  
-    {summaries} will be replaced with the content of the documents retrieved from the VectorStore.  
-    {question} will be replaced with the user's question."""
-
-    # RediSearch
-    top_k_help = """用来限制从Redis搜索到的最大Chunk数"""
-    score_threshold_help = """用来限制 Chunk 匹配分数"""
-    search_type_help = """similarity_limit 模式下，匹配分数低于 Score threshold，不会返回（有点问题）"""
-
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        st.image(os.path.join('images','microsoft.png'))
+        st.image(os.path.join('images', 'microsoft.png'))
 
-    col1, col2, col3 = st.columns([2,2,2])
+    col1, col2, col3 = st.columns([2, 2, 2])
     with col1:
         st.button("Check deployment", on_click=check_deployment)
     with col3:
@@ -160,28 +166,37 @@ try:
             #     [os.environ['OPENAI_ENGINE']]
             # )
             # st.tokens_response = st.slider("Tokens response length", 100, 500, 400)
-            st.slider("Temperature", key='custom_temperature', min_value=0.0, max_value=1.0, step=0.1)
-            st.text_area("Custom Prompt", key='custom_prompt', on_change=check_variables_in_prompt, placeholder=custom_prompt_placeholder,help=custom_prompt_help, height=150)
-            st.number_input("Top k", key='top_k', min_value=1, step=1, help=top_k_help)
-            st.number_input("Score threshold", key='score_threshold', min_value=0.1, step=0.1, max_value=1.0, help=score_threshold_help)
-            st.selectbox("Search type", key='search_type', options=("""similarity""", """similarity_limit"""), help=search_type_help)
+            st.slider("Temperature", key='temperature', min_value=0.0, max_value=1.0, step=0.1)
+            st.text_area("Condense question prompt", key='condense_question_prompt', height=150,
+                         on_change=check_variables_in_condense_question_prompt,
+                         placeholder=condense_question_prompt_template,
+                         help="You can configure a condense question prompt by adding the variables {chat_history} and {question} to the prompt.")
+            st.text_area("Completion prompt", key='completion_prompt', height=150,
+                         on_change=check_variables_in_completion_prompt,
+                         placeholder=completion_prompt_template,
+                         help="""You can configure a completion prompt by adding the variables {summaries} and {question} to the prompt.  
+                                {summaries} will be replaced with the content of the documents retrieved from the VectorStore.  
+                                {question} will be replaced with the user's question.""")
+            st.number_input("Top k", key='top_k', min_value=1, step=1, help="用来限制从Redis搜索到的最大Chunk数")
+            st.slider("Score threshold", key='score_threshold', min_value=0.1, step=0.1, max_value=1.0, help="向量相似性：数值越小相似性要求越高")
+            st.selectbox("Search type", key='search_type', options=("similarity", "similarity_limit"), help="similarity_limit 模式下，匹配分数低于 Score threshold，不会返回（有点问题）")
             st.selectbox("Language", [None] + list(available_languages.keys()), key='translation_language')
 
-    question = st.text_input("OpenAI Semantic Answer", default_question)
+    question = st.text_input("OpenAI Semantic Answer", "")
 
     if question != '':
         st.session_state['question'] = question
         st.session_state['question'], st.session_state['response'], st.session_state['context'], sources = llm_helper.get_semantic_answer_lang_chain(question, [])
         st.markdown("Answer:" + st.session_state['response'])
-        st.markdown(f'\n\nSources: {sources}') 
+        st.markdown(f'\n\nSources: {sources}')
         with st.expander("Question and Answer Context"):
             st.markdown(st.session_state['context'].replace('$', '\$'))
-            st.markdown(f"SOURCES: {sources}") 
+            st.markdown(f"SOURCES: {sources}")
 
     if st.session_state['translation_language'] and st.session_state['translation_language'] != '':
         st.write(f"Translation to other languages, 翻译成其他语言, النص باللغة العربية")
-        st.write(f"{llm_helper.translator.translate(st.session_state['response'], available_languages[st.session_state['translation_language']])}")		
-		
+        st.write(f"{llm_helper.translator.translate(st.session_state['response'], available_languages[st.session_state['translation_language']])}")
+
 except Exception:
     traceback.print_exc()
     st.error(traceback.format_exc())

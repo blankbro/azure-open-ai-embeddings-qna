@@ -25,7 +25,7 @@ from langchain.schema import AIMessage, HumanMessage, SystemMessage
 from utilities.formrecognizer import AzureFormRecognizerClient
 from utilities.azureblobstorage import AzureBlobStorageClient
 from utilities.translator import AzureTranslatorClient
-from utilities.customprompt import PROMPT
+from utilities.customprompt import COMPLETION_PROMPT
 from utilities.redis import RedisExtended
 
 import pandas as pd
@@ -33,23 +33,25 @@ import urllib
 
 from fake_useragent import UserAgent
 
+
 class LLMHelper:
     def __init__(self,
-        document_loaders : BaseLoader = None, 
-        text_splitter: TextSplitter = None,
-        embeddings: OpenAIEmbeddings = None,
-        llm: AzureOpenAI = None,
-        temperature: float = None,
-        max_tokens: int = None,
-        custom_prompt: str = "",
-        vector_store: VectorStore = None,
-        k: int = None,
-        score_threshold: float = None,
-        search_type: str = None,
-        pdf_parser: AzureFormRecognizerClient = None,
-        blob_client: AzureBlobStorageClient = None,
-        enable_translation: bool = False,
-        translator: AzureTranslatorClient = None):
+                 document_loaders: BaseLoader = None,
+                 text_splitter: TextSplitter = None,
+                 embeddings: OpenAIEmbeddings = None,
+                 llm: AzureOpenAI = None,
+                 temperature: float = None,
+                 max_tokens: int = None,
+                 condense_question_prompt: str = None,
+                 completion_prompt: str = None,
+                 vector_store: VectorStore = None,
+                 k: int = None,
+                 score_threshold: float = None,
+                 search_type: str = None,
+                 pdf_parser: AzureFormRecognizerClient = None,
+                 blob_client: AzureBlobStorageClient = None,
+                 enable_translation: bool = False,
+                 translator: AzureTranslatorClient = None):
 
         load_dotenv()
         openai.api_type = "azure"
@@ -66,25 +68,23 @@ class LLMHelper:
         self.deployment_type: str = os.getenv("OPENAI_DEPLOYMENT_TYPE", "Text")
         self.temperature: float = float(os.getenv("OPENAI_TEMPERATURE", 0.7)) if temperature is None else temperature
         self.max_tokens: int = int(os.getenv("OPENAI_MAX_TOKENS", -1)) if max_tokens is None else max_tokens
-        '''
-        回答问题的Prompt
-            custom_prompt 是用户自定义的 Prompt
-            PROMPT 是 customprompt.py 中定义的默认的 PromptTemplate
-        '''
-        self.prompt = PROMPT if custom_prompt == '' else PromptTemplate(template=custom_prompt, input_variables=["summaries", "question"])
-
+        self.condense_question_prompt = CONDENSE_QUESTION_PROMPT if (condense_question_prompt is None or condense_question_prompt == '') else PromptTemplate(template=condense_question_prompt, input_variables=["chat_history", "question"])
+        self.completion_prompt = COMPLETION_PROMPT if (completion_prompt is None or completion_prompt == '') else PromptTemplate(template=completion_prompt, input_variables=["summaries", "question"])
 
         # Vector store settings
         self.vector_store_address: str = os.getenv('REDIS_ADDRESS', "localhost")
-        self.vector_store_port: int= int(os.getenv('REDIS_PORT', 6379))
+        self.vector_store_port: int = int(os.getenv('REDIS_PORT', 6379))
         self.vector_store_protocol: str = os.getenv("REDIS_PROTOCOL", "redis://")
         self.vector_store_password: str = os.getenv("REDIS_PASSWORD", None)
+        self.k: int = int(os.getenv("REDISEARCH_TOP_K", 4)) if k is None else k
+        self.score_threshold: float = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2)) if score_threshold is None else score_threshold
+        self.search_type: str = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit") if search_type is None else search_type
 
         if self.vector_store_password:
             self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}"
         else:
             self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}"
-        
+
         self.chunk_size = int(os.getenv('CHUNK_SIZE', 500))
         self.chunk_overlap = int(os.getenv('CHUNK_OVERLAP', 100))
         self.document_loaders: BaseLoader = WebBaseLoader if document_loaders is None else document_loaders
@@ -94,15 +94,12 @@ class LLMHelper:
             self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name, temperature=self.temperature, max_tokens=self.max_tokens if self.max_tokens != -1 else None) if llm is None else llm
         else:
             self.llm: AzureOpenAI = AzureOpenAI(deployment_name=self.deployment_name, temperature=self.temperature, max_tokens=self.max_tokens) if llm is None else llm
-        self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store   
-        self.k : int = 4 if k is None else k
-        self.score_threshold : float = 0.4 if score_threshold is None else score_threshold
-        self.search_type : str = "similarity" if search_type is None else search_type
+        self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store
 
-        self.pdf_parser : AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
+        self.pdf_parser: AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
         self.blob_client: AzureBlobStorageClient = AzureBlobStorageClient() if blob_client is None else blob_client
-        self.enable_translation : bool = False if enable_translation is None else enable_translation
-        self.translator : AzureTranslatorClient = AzureTranslatorClient() if translator is None else translator
+        self.enable_translation: bool = False if enable_translation is None else enable_translation
+        self.translator: AzureTranslatorClient = AzureTranslatorClient() if translator is None else translator
 
         self.user_agent: UserAgent() = UserAgent()
         self.user_agent.random
@@ -110,24 +107,24 @@ class LLMHelper:
     def add_embeddings_lc(self, source_url):
         try:
             documents = self.document_loaders(source_url).load()
-            
+
             # Convert to UTF-8 encoding for non-ascii text
-            for(document) in documents:
+            for (document) in documents:
                 try:
                     if document.page_content.encode("iso-8859-1") == document.page_content.encode("latin-1"):
                         document.page_content = document.page_content.encode("iso-8859-1").decode("utf-8", errors="ignore")
                 except:
                     pass
-                
+
             docs = self.text_splitter.split_documents(documents)
-            
+
             # Remove half non-ascii character from start/end of doc content (langchain TokenTextSplitter may split a non-ascii character in half)
             pattern = re.compile(r'[\x00-\x1f\x7f\u0080-\u00a0\u2000-\u3000\ufff0-\uffff]')
-            for(doc) in docs:
+            for (doc) in docs:
                 doc.page_content = re.sub(pattern, '', doc.page_content)
                 if doc.page_content == '':
                     docs.remove(doc)
-            
+
             keys = []
             for i, doc in enumerate(docs):
                 # Create a unique key for the document
@@ -136,8 +133,8 @@ class LLMHelper:
                 hash_key = hashlib.sha1(f"{source_url}_{i}".encode('utf-8')).hexdigest()
                 hash_key = f"doc:{self.index_name}:{hash_key}"
                 keys.append(hash_key)
-                doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)" , "chunk": i, "key": hash_key, "filename": filename}
-            self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address,  index_name=self.index_name, keys=keys)
+                doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)", "chunk": i, "key": hash_key, "filename": filename}
+            self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
         except Exception as e:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e
@@ -161,33 +158,26 @@ class LLMHelper:
         return converted_filename
 
     def get_all_documents(self, k: int = None):
-        result = self.vector_store.similarity_search(query="*", k= k if k else self.k)
+        result = self.vector_store.similarity_search(query="*", k=k if k else self.k)
         return pd.DataFrame(list(map(lambda x: {
-                'key': x.metadata['key'],
-                'filename': x.metadata['filename'],
-                'source': urllib.parse.unquote(x.metadata['source']), 
-                'content': x.page_content, 
-                'metadata' : x.metadata,
-                }, result)))
+            'key': x.metadata['key'],
+            'filename': x.metadata['filename'],
+            'source': urllib.parse.unquote(x.metadata['source']),
+            'content': x.page_content,
+            'metadata': x.metadata,
+        }, result)))
 
     def get_semantic_answer_lang_chain(self, question, chat_history):
         # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
-        question_generator = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT, verbose=False)
+        question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=False)
         '''
         chain_type 说明
             "stuff"：这个枚举值可能表示程序将对数据进行一些预处理，以便后续的处理更加高效。
             "map_reduce"：这个枚举值可能表示程序将使用 MapReduce 算法进行数据处理。这种算法通常适用于大规模数据集，可以在分布式计算环境中运行。
             "map_rerank"：这个枚举值可能表示程序将使用 MapRerank 算法进行数据处理。这种算法通常用于对搜索结果进行排序，以便展示最相关的结果。
             "refine"：这个枚举值可能表示程序将对数据进行进一步的精细处理，以提高输出结果的质量。
-        prompt=self.prompt 说明
-            
         '''
-        doc_chain = load_qa_with_sources_chain(self.llm, chain_type="stuff", verbose=True, prompt=self.prompt)
-        # 从向量数据库中进行相似性搜索。最小相似度为0.8，匹配到多个时，取 top self.k，
-        # retriever=self.vector_store.similarity_search_limit_score(query=question, k=self.k, score_threshold=0.8),
-
-
-
+        doc_chain = load_qa_with_sources_chain(self.llm, chain_type="stuff", verbose=True, prompt=self.completion_prompt)
         chain = ConversationalRetrievalChain(
             retriever=self.vector_store.as_retriever(k=self.k, score_threshold=self.score_threshold, search_type=self.search_type),
             question_generator=question_generator,
@@ -200,14 +190,14 @@ class LLMHelper:
         sources = "\n".join(set(map(lambda x: x.metadata["source"], result['source_documents'])))
 
         container_sas = self.blob_client.get_container_sas()
-        
+
         result['answer'] = result['answer'].split('SOURCES:')[0].split('Sources:')[0].split('SOURCE:')[0].split('Source:')[0]
         sources = sources.replace('_SAS_TOKEN_PLACEHOLDER_', container_sas)
 
         return question, result['answer'], context, sources
 
     def get_embeddings_model(self):
-        OPENAI_EMBEDDINGS_ENGINE_DOC = os.getenv('OPENAI_EMEBDDINGS_ENGINE', os.getenv('OPENAI_EMBEDDINGS_ENGINE_DOC', 'text-embedding-ada-002'))  
+        OPENAI_EMBEDDINGS_ENGINE_DOC = os.getenv('OPENAI_EMEBDDINGS_ENGINE', os.getenv('OPENAI_EMBEDDINGS_ENGINE_DOC', 'text-embedding-ada-002'))
         OPENAI_EMBEDDINGS_ENGINE_QUERY = os.getenv('OPENAI_EMEBDDINGS_ENGINE', os.getenv('OPENAI_EMBEDDINGS_ENGINE_QUERY', 'text-embedding-ada-002'))
         return {
             "doc": OPENAI_EMBEDDINGS_ENGINE_DOC,

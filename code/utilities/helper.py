@@ -42,6 +42,9 @@ class LLMHelper:
                  llm: AzureOpenAI = None,
                  temperature: float = None,
                  max_tokens: int = None,
+                 top_p: int = None,
+                 frequency_penalty: float = None,
+                 presence_penalty: float = None,
                  condense_question_prompt: str = None,
                  completion_prompt: str = None,
                  vector_store: VectorStore = None,
@@ -64,10 +67,13 @@ class LLMHelper:
         self.api_version = openai.api_version
         self.index_name: str = "embeddings"
         self.model: str = os.getenv('OPENAI_EMBEDDINGS_ENGINE_DOC', "text-embedding-ada-002")
-        self.deployment_name: str = os.getenv("OPENAI_ENGINE", os.getenv("OPENAI_ENGINES", "text-davinci-003"))
+        self.deployment_name: str = os.getenv("OPENAI_ENGINE", "text-davinci-003")
         self.deployment_type: str = os.getenv("OPENAI_DEPLOYMENT_TYPE", "Text")
         self.temperature: float = float(os.getenv("OPENAI_TEMPERATURE", 0.7)) if temperature is None else temperature
         self.max_tokens: int = int(os.getenv("OPENAI_MAX_TOKENS", -1)) if max_tokens is None else max_tokens
+        self.top_p: float = float(os.getenv("OPENAI_TOP_P", 1)) if top_p is None else top_p
+        self.frequency_penalty: float = float(os.getenv("OPENAI_FREQUENCY_PENALTY", 0)) if frequency_penalty is None else frequency_penalty
+        self.presence_penalty: float = float(os.getenv("OPENAI_PRESENCE_PENALTY", 0)) if presence_penalty is None else presence_penalty
         self.condense_question_prompt = CONDENSE_QUESTION_PROMPT if (condense_question_prompt is None or condense_question_prompt == '') else PromptTemplate(template=condense_question_prompt, input_variables=["chat_history", "question"])
         self.completion_prompt = COMPLETION_PROMPT if (completion_prompt is None or completion_prompt == '') else PromptTemplate(template=completion_prompt, input_variables=["summaries", "question"])
 
@@ -79,7 +85,6 @@ class LLMHelper:
         self.k: int = int(os.getenv("REDISEARCH_TOP_K", 4)) if k is None else k
         self.score_threshold: float = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2)) if score_threshold is None else score_threshold
         self.search_type: str = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit") if search_type is None else search_type
-
         if self.vector_store_password:
             self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}"
         else:
@@ -90,11 +95,21 @@ class LLMHelper:
         self.document_loaders: BaseLoader = WebBaseLoader if document_loaders is None else document_loaders
         self.text_splitter: TextSplitter = TokenTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
         self.embeddings: OpenAIEmbeddings = OpenAIEmbeddings(model=self.model, chunk_size=1) if embeddings is None else embeddings
-        if self.deployment_type == "Chat":
-            self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name, temperature=self.temperature, max_tokens=self.max_tokens if self.max_tokens != -1 else None) if llm is None else llm
-        else:
-            self.llm: AzureOpenAI = AzureOpenAI(deployment_name=self.deployment_name, temperature=self.temperature, max_tokens=self.max_tokens) if llm is None else llm
         self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store
+        if self.deployment_type == "Chat":
+            self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name,
+                                              temperature=self.temperature,
+                                              max_tokens=self.max_tokens if self.max_tokens != -1 else None
+                                              ) if llm is None else llm
+        else:
+            self.llm: AzureOpenAI = AzureOpenAI(deployment_name=self.deployment_name,
+                                                temperature=self.temperature,
+                                                max_tokens=self.max_tokens,
+                                                top_p=self.top_p,
+                                                frequency_penalty=self.frequency_penalty,
+                                                presence_penalty=self.presence_penalty
+                                                ) if llm is None else llm
+
 
         self.pdf_parser: AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
         self.blob_client: AzureBlobStorageClient = AzureBlobStorageClient() if blob_client is None else blob_client

@@ -123,6 +123,14 @@ try:
         st.session_state['completion_prompt'] = os.getenv("COMPLETION_PROMPT", "")
     if 'temperature' not in st.session_state:
         st.session_state['temperature'] = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
+    if 'max_response' not in st.session_state:
+        st.session_state['max_response'] = int(os.getenv("OPENAI_MAX_TOKENS", -1))
+    if 'top_p' not in st.session_state:
+        st.session_state['top_p'] = float(os.getenv("OPENAI_TOP_P", 0.95))
+    if 'frequency_penalty' not in st.session_state:
+        st.session_state['frequency_penalty'] = float(os.getenv("OPENAI_FREQUENCY_PENALTY", 0))
+    if 'presence_penalty' not in st.session_state:
+        st.session_state['presence_penalty'] = float(os.getenv("OPENAI_PRESENCE_PENALTY", 0))
 
     if 'top_k' not in st.session_state:
         st.session_state['top_k'] = int(os.getenv("REDISEARCH_TOP_K", 4))
@@ -145,6 +153,10 @@ try:
     llm_helper = LLMHelper(condense_question_prompt=st.session_state.condense_question_prompt,
                            completion_prompt=st.session_state.completion_prompt,
                            temperature=st.session_state.temperature,
+                           max_tokens=st.session_state.max_response,
+                           top_p=st.session_state.top_p,
+                           frequency_penalty=st.session_state.frequency_penalty,
+                           presence_penalty=st.session_state.presence_penalty,
                            k=st.session_state.top_k,
                            score_threshold=st.session_state.score_threshold,
                            search_type=st.session_state.search_type)
@@ -167,6 +179,10 @@ try:
             # )
             # st.tokens_response = st.slider("Tokens response length", 100, 500, 400)
             st.slider("Temperature", key='temperature', min_value=0.0, max_value=1.0, step=0.1)
+            st.slider("Max response", key='max_response', min_value=-1, max_value=4000, step=1, help="最大响应数。-1表示无限制")
+            st.slider("Top p", key='top_p', min_value=0.0, max_value=1.0, step=0.1, help="与温度类似，这控制随机性但使用不同的方法。降低 Top P 将缩小模型的令牌选择范围，使其更有可能选择令牌。增加 Top P 将让模型从高概率和低概率的令牌中进行选择。尝试调整温度或 Top P，但不要同时调整两者。")
+            st.slider("Frequency penalty", key='frequency_penalty', min_value=0.0, max_value=2.0, step=0.1, help="根据单词在文本中出现的频率，按比例减少单词重复出现的机会。这降低了在响应中重复完全相同的文本的可能性。")
+            st.slider("Presence penalty", key='presence_penalty', min_value=0.0, max_value=2.0, step=0.1, help="减少重复出现在文本中的单词的机会。这增加了在回应中引入新话题的可能性。")
             st.text_area("Condense question prompt", key='condense_question_prompt', height=150,
                          on_change=check_variables_in_condense_question_prompt,
                          placeholder=condense_question_prompt_template,

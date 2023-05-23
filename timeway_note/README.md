@@ -61,3 +61,14 @@ code
     ├── redis.py
     └── translator.py
 ```
+
+# 服务器部署命令备忘
+
+```
+git pull
+docker rm -f webapp
+docker image rm azure-open-ai-embeddings-qna
+
+docker build . -f WebApp.Dockerfile -t azure-open-ai-embeddings-qna
+docker run -d --env-file .env -p 8080:80 --name webapp azure-open-ai-embeddings-qna 
+```

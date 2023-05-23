@@ -140,7 +140,7 @@ class LLMHelper:
                     docs.remove(doc)
 
             keys = []
-            filenames = []
+            filenames = set()
             for i, doc in enumerate(docs):
                 # Create a unique key for the document
                 source_url = source_url.split('?')[0]
@@ -149,7 +149,7 @@ class LLMHelper:
                 hash_key = f"doc:{self.index_name}:{hash_key}"
                 keys.append(hash_key)
                 doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)", "chunk": i, "key": hash_key, "filename": filename}
-                filenames.append(filename)
+                filenames.add(filename)
             self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
             for filename in filenames:
                 self.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})

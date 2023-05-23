@@ -6,13 +6,13 @@ from utilities.helper import LLMHelper
 try:
     # Set page layout to wide screen and menu item
     menu_items = {
-	'Get help': None,
-	'Report a bug': None,
-	'About': '''
-	 ## Embeddings App
+        'Get help': None,
+        'Report a bug': None,
+        'About': '''
+            ## Embeddings App
 
-	Document Reader Sample Demo.
-	'''
+            Document Reader Sample Demo.
+        '''
     }
     st.set_page_config(layout="wide", menu_items=menu_items)
 
@@ -22,11 +22,11 @@ try:
                 footer {visibility: hidden;}
                 </style>
                 """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     llm_helper = LLMHelper()
 
-    col1, col2, col3 = st.columns([2,1,1])
+    col1, col2, col3 = st.columns([2, 1, 1])
 
     files_data = llm_helper.blob_client.get_all_files()
 

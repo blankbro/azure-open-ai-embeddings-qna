@@ -110,7 +110,6 @@ class LLMHelper:
                                                 presence_penalty=self.presence_penalty
                                                 ) if llm is None else llm
 
-
         self.pdf_parser: AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
         self.blob_client: AzureBlobStorageClient = AzureBlobStorageClient() if blob_client is None else blob_client
         self.enable_translation: bool = False if enable_translation is None else enable_translation
@@ -141,6 +140,7 @@ class LLMHelper:
                     docs.remove(doc)
 
             keys = []
+            filenames = []
             for i, doc in enumerate(docs):
                 # Create a unique key for the document
                 source_url = source_url.split('?')[0]
@@ -149,12 +149,15 @@ class LLMHelper:
                 hash_key = f"doc:{self.index_name}:{hash_key}"
                 keys.append(hash_key)
                 doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)", "chunk": i, "key": hash_key, "filename": filename}
+                filenames.append(filename)
             self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
+            for filename in filenames:
+                self.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})
         except Exception as e:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e
 
-    def convert_file_and_add_embeddings(self, bytes_data: bytes, source_url, filename, enable_translation=False):
+    def convert_file(self, bytes_data: bytes = None, source_url: str = None, filename: str = None, enable_translation=False):
         # Extract the text from the file
         text = self.pdf_parser.analyze_read(bytes_data, source_url)
         # Translate if requested
@@ -166,10 +169,13 @@ class LLMHelper:
 
         print(f"Converted file uploaded to {source_url} with filename {filename}")
         # Update the metadata to indicate that the file has been converted
-        self.blob_client.upsert_blob_metadata(filename, {"converted": "true"})
+        self.blob_client.upsert_blob_metadata(filename, {"converted": "true", 'converted_filename': urllib.parse.quote(converted_filename)})
 
+        return converted_filename
+
+    def convert_file_and_add_embeddings(self, bytes_data: bytes, source_url, filename, enable_translation=False):
+        converted_filename = self.convert_file(bytes_data, source_url, filename, enable_translation)
         self.add_embeddings_lc(source_url=source_url)
-
         return converted_filename
 
     def get_all_documents(self, k: int = None):

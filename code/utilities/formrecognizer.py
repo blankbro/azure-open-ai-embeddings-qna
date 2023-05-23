@@ -14,14 +14,15 @@ class AzureFormRecognizerClient:
         self.form_recognizer_endpoint : str = form_recognizer_endpoint if form_recognizer_endpoint else os.getenv('FORM_RECOGNIZER_ENDPOINT')
         self.form_recognizer_key : str = form_recognizer_key if form_recognizer_key else os.getenv('FORM_RECOGNIZER_KEY')
 
-    def analyze_read(self, formUrl):
+    def analyze_read(self, bytes_data: bytes, formUrl):
 
         document_analysis_client = DocumentAnalysisClient(
             endpoint=self.form_recognizer_endpoint, credential=AzureKeyCredential(self.form_recognizer_key)
         )
         
-        poller = document_analysis_client.begin_analyze_document_from_url(
-                "prebuilt-layout", formUrl)
+        # poller = document_analysis_client.begin_analyze_document_from_url(
+        #         "prebuilt-layout", formUrl)
+        poller = document_analysis_client.begin_analyze_document("prebuilt-layout", bytes_data)
         layout = poller.result()
 
         results = []

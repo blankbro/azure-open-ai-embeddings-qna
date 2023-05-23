@@ -154,9 +154,9 @@ class LLMHelper:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e
 
-    def convert_file_and_add_embeddings(self, source_url, filename, enable_translation=False):
+    def convert_file_and_add_embeddings(self, bytes_data: bytes, source_url, filename, enable_translation=False):
         # Extract the text from the file
-        text = self.pdf_parser.analyze_read(source_url)
+        text = self.pdf_parser.analyze_read(bytes_data, source_url)
         # Translate if requested
         text = list(map(lambda x: self.translator.translate(x), text)) if self.enable_translation else text
 

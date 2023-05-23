@@ -79,7 +79,7 @@ try:
 
                 else:
                     # Get OCR with Layout API and then add embeddigns
-                    converted_filename = llm_helper.convert_file_and_add_embeddings(st.session_state['file_url'], st.session_state['filename'], st.session_state['translate'])
+                    converted_filename = llm_helper.convert_file_and_add_embeddings(bytes_data, st.session_state['file_url'], st.session_state['filename'], st.session_state['translate'])
                 
                 llm_helper.blob_client.upsert_blob_metadata(uploaded_file.name, {'converted': 'true', 'embeddings_added': 'true', 'converted_filename': parse.quote(converted_filename)})
                 st.success(f"File {uploaded_file.name} embeddings added to the knowledge base.")
@@ -140,4 +140,5 @@ try:
 
 
 except Exception as e:
+    traceback.print_exc()
     st.error(traceback.format_exc())

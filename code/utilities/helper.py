@@ -30,6 +30,7 @@ from utilities.redis import RedisExtended
 
 import pandas as pd
 import urllib
+import utilities.myutil as myutil
 
 from fake_useragent import UserAgent
 
@@ -208,7 +209,7 @@ class LLMHelper:
         )
         result = chain({"question": question, "chat_history": chat_history})
         context = "\n\n".join(list(map(lambda x: x.page_content, result['source_documents'])))
-        sources = "\n".join(set(map(lambda x: x.metadata["source"], result['source_documents'])))
+        sources = "\n".join(set(map(lambda x: myutil.document_to_markdown_link(x), result['source_documents'])))
 
         container_sas = self.blob_client.get_container_sas()
 

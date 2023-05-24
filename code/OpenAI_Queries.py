@@ -195,7 +195,7 @@ try:
                                 {question} will be replaced with the user's question.""")
             st.number_input("Top k", key='top_k', min_value=1, step=1, help="用来限制从Redis搜索到的最大Chunk数")
             st.slider("Score threshold", key='score_threshold', min_value=0.1, step=0.1, max_value=1.0, help="向量相似性：数值越小相似性要求越高")
-            st.selectbox("Search type", key='search_type', options=("similarity", "similarity_limit"), help="similarity_limit 模式下，匹配分数低于 Score threshold，不会返回（有点问题）")
+            st.selectbox("Search type", key='search_type', options=("similarity", "similarity_limit"), help="similarity_limit 模式下，匹配分数低于 Score threshold，不会返回")
             st.selectbox("Language", [None] + list(available_languages.keys()), key='translation_language')
 
     question = st.text_input("OpenAI Semantic Answer", "")

@@ -48,7 +48,12 @@ class AzureBlobStorageClient:
             converted_filename = "converted/" + file.get('filename', '') + ".txt"
             if converted_filename in converted_files:
                 file['converted'] = True
+                file['converted_filename'] = converted_filename
                 file['converted_path'] = converted_files[converted_filename]
+            else:
+                file['converted'] = False
+                file['converted_filename'] = ""
+                file['converted_path'] = ""
 
         return files
 

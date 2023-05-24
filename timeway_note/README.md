@@ -66,7 +66,7 @@ code
 
 ```
 # 删除旧镜像
-docker image rm azure-open-ai-embeddings-qna
+docker image rm -f azure-open-ai-embeddings-qna
 
 # 打包新镜像
 git pull

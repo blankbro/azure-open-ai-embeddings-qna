@@ -3,6 +3,12 @@ import streamlit as st
 import os
 import traceback
 from utilities.helper import LLMHelper
+import datetime
+
+
+def now_date_time():
+    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 
 try:
     # Set page layout to wide screen and menu item
@@ -33,7 +39,6 @@ try:
 
     st.dataframe(files_data, use_container_width=True)
 
-
     if st.button("补充缺失的 converted 文件"):
         for file_data in files_data:
             filename = file_data["filename"]
@@ -47,16 +52,16 @@ try:
             filename = file_data["filename"]
             fullpath = file_data["fullpath"]
             if not file_data.get("embeddings_added"):
-                st.write(filename + " 开始生成文本对应的向量")
+                st.write(now_date_time() + " " + filename + " 开始生成文本对应的向量")
                 llm_helper.add_embeddings_lc(fullpath)
-                st.write(filename + " 完成生成文本对应的向量")
+                st.write(now_date_time() + " " + filename + " 完成生成文本对应的向量")
     if st.button("重新为所有文档生成 embeddings 向量"):
         for file_data in files_data:
             filename = file_data["filename"]
             fullpath = file_data["fullpath"]
-            st.write(filename + " 开始生成文本对应的向量")
+            st.write(now_date_time() + " " + filename + " 开始生成文本对应的向量")
             llm_helper.add_embeddings_lc(fullpath)
-            st.write(filename + " 完成生成文本对应的向量")
+            st.write(now_date_time() + " " + filename + " 完成生成文本对应的向量")
 except Exception as e:
     traceback.print_exc()
     st.error(traceback.format_exc())

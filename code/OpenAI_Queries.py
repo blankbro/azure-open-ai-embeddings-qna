@@ -137,7 +137,7 @@ try:
     if 'score_threshold' not in st.session_state:
         st.session_state['score_threshold'] = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2))
     if 'search_type' not in st.session_state:
-        st.session_state['search_type'] = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit")
+        st.session_state['search_type'] = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity")
 
     # Set page layout to wide screen and menu item
     menu_items = {

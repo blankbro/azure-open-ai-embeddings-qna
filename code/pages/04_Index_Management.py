@@ -56,4 +56,5 @@ try:
         st.button("Delete all embeddings", on_click=llm_helper.vector_store.delete_keys_pattern, args=("doc*",), type="secondary")
 
 except Exception as e:
+    traceback.print_exc()
     st.error(traceback.format_exc())

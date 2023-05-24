@@ -83,13 +83,14 @@ class LLMHelper:
         self.vector_store_port: int = int(os.getenv('REDIS_PORT', 6379))
         self.vector_store_protocol: str = os.getenv("REDIS_PROTOCOL", "redis://")
         self.vector_store_password: str = os.getenv("REDIS_PASSWORD", None)
+        self.vector_store_db: int = int(os.getenv("REDIS_DB", 0))
         self.k: int = int(os.getenv("REDISEARCH_TOP_K", 4)) if k is None else k
         self.score_threshold: float = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2)) if score_threshold is None else score_threshold
         self.search_type: str = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit") if search_type is None else search_type
         if self.vector_store_password:
-            self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}"
+            self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}/{self.vector_store_db}"
         else:
-            self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}"
+            self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}/{self.vector_store_db}"
 
         self.chunk_size = int(os.getenv('CHUNK_SIZE', 500))
         self.chunk_overlap = int(os.getenv('CHUNK_OVERLAP', 100))
@@ -209,7 +210,7 @@ class LLMHelper:
         )
         result = chain({"question": question, "chat_history": chat_history})
         context = "\n\n".join(list(map(lambda x: x.page_content, result['source_documents'])))
-        sources = "\n".join(set(map(lambda x: myutil.document_to_markdown_link(x), result['source_documents'])))
+        sources = "\n\n".join(set(map(lambda x: myutil.document_to_markdown_link(x), result['source_documents'])))
 
         container_sas = self.blob_client.get_container_sas()
 

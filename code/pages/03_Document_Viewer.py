@@ -56,6 +56,7 @@ try:
             if file_data.get("converted") is True and file_data.get("embeddings_added") is False:
                 st.write(f"{now_date_time()}【{i}】{filename} 开始了")
                 llm_helper.add_embeddings_lc(converted_file_url)
+                llm_helper.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})
                 st.write(f"{now_date_time()}【{i}】{filename} 完成了")
     if st.button("将所有文档 embeddings_added 状态置为 false"):
         for i in range(len(files_data)):

@@ -152,8 +152,6 @@ class LLMHelper:
                 doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)", "chunk": i, "key": hash_key, "filename": filename}
                 filenames.add(filename)
             self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
-            for filename in filenames:
-                self.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})
         except Exception as e:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e
@@ -213,7 +211,7 @@ class LLMHelper:
 
         container_sas = self.blob_client.get_container_sas()
 
-        result['answer'] = result['answer'].split('SOURCES:')[0].split('Sources:')[0].split('SOURCE:')[0].split('Source:')[0]
+        # result['answer'] = result['answer'].split('SOURCES:')[0].split('Sources:')[0].split('SOURCE:')[0].split('Source:')[0]
         sources = sources.replace('_SAS_TOKEN_PLACEHOLDER_', container_sas)
 
         return question, result['answer'], context, sources

@@ -149,7 +149,7 @@ with col2:
                      help="""You can configure a completion prompt by adding the variables {summaries} and {question} to the prompt.  
                             {summaries} will be replaced with the content of the documents retrieved from the VectorStore.  
                             {question} will be replaced with the user's question.""")
-        st.number_input("Top k", key='top_k', min_value=1, step=1, help="用来限制从Redis搜索到的最大Chunk数")
+        st.number_input("Top k", key='top_k', min_value=1, step=1, help="限制Redis搜索到的最大Chunk数")
         st.slider("Score threshold", key='score_threshold', min_value=0.1, step=0.1, max_value=1.0, help="向量相似度（越接近0，也就越相似）")
         st.selectbox("Search type", key='search_type', options=("similarity", "similarity_limit"), help="similarity_limit会根据相似度的要求进行过滤")
         st.selectbox("Language", [None] + list(available_languages.keys()), key='translation_language')

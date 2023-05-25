@@ -51,6 +51,7 @@ try:
                 llm_helper.add_embeddings_lc(file_data["converted_path"])
                 llm_helper.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})
                 st.write(f"{now_date_time()}【{i}】{filename} 完成了")
+        st.write("所有文件已处理完成")
     if st.button("将所有文档 embeddings_added 状态置为 false"):
         for i in range(len(files_data)):
             file_data = files_data[i]
@@ -58,8 +59,7 @@ try:
             st.write(f"{now_date_time()}【{i}】{filename} 开始了")
             llm_helper.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'false'})
             st.write(f"{now_date_time()}【{i}】{filename} 完成了")
-
-    st.write("所有文件已处理完成")
+        st.write("所有文件已处理完成")
 except Exception as e:
     traceback.print_exc()
     st.error(traceback.format_exc())

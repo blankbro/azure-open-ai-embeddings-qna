@@ -44,7 +44,7 @@ try:
             filename = file_data["filename"]
             if file_data.get("converted") is False and not filename.endswith('.txt'):
                 st.write(f"{now_date_time()}【{i}】{filename} 开始生成 converted文件 和 embeddings向量")
-                llm_helper.convert_file_and_add_embeddings(bytes_data=requests.get(file_data["fullpath"]).content, filename=filename, enable_translation=False)
+                llm_helper.convert_file_and_add_embeddings(bytes_data=requests.get(file_data["fullpath"]).content, source_url=None, filename=filename, enable_translation=False)
                 st.write(f"{now_date_time()}【{i}】{filename} 完成了")
             elif file_data.get("embeddings_added") is False:
                 st.write(f"{now_date_time()}【{i}】{filename} 开始生成 embeddings向量")

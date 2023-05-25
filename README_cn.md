@@ -65,6 +65,7 @@ code
 # 服务器部署命令备忘
 
 ```
+# ====== 自测
 # 删除旧镜像
 docker image rm -f azure-open-ai-embeddings-qna
 
@@ -77,4 +78,18 @@ docker rm -f webapp
 
 # 启动新应用
 docker run -d --env-file .env -p 8080:80 --name webapp azure-open-ai-embeddings-qna 
+
+# ====== 用户部署
+# 删除旧镜像
+docker image rm -f azure-open-ai-embeddings-qna:user
+
+# 打包新镜像
+git pull
+docker build . -f WebApp-User.Dockerfile -t azure-open-ai-embeddings-qna:user
+
+# 停止旧应用
+docker rm -f webapp-user
+
+# 启动新应用
+docker run -d --env-file .env -p 8081:80 --name webapp-user azure-open-ai-embeddings-qna:user 
 ```

@@ -78,7 +78,7 @@ class LLMHelper:
         self.presence_penalty: float = float(os.getenv("OPENAI_PRESENCE_PENALTY", 0)) if presence_penalty is None else presence_penalty
         self.condense_question_prompt = CONDENSE_QUESTION_PROMPT if (condense_question_prompt is None or condense_question_prompt == '') else PromptTemplate(template=condense_question_prompt, input_variables=["chat_history", "question"])
         self.completion_prompt = COMPLETION_PROMPT if (completion_prompt is None or completion_prompt == '') else PromptTemplate(template=completion_prompt, input_variables=["summaries", "question"])
-        self.vector_store_type = os.getenv("VECTOR_STORE_TYPE")
+        self.vector_store_type = os.getenv("VECTOR_STORE_TYPE", "")
 
         # Azure Search settings
         if self.vector_store_type == "AzureSearch":

@@ -27,6 +27,7 @@ from utilities.azureblobstorage import AzureBlobStorageClient
 from utilities.translator import AzureTranslatorClient
 from utilities.customprompt import COMPLETION_PROMPT
 from utilities.redis import RedisExtended
+from utilities.azuresearch import AzureSearch
 
 import pandas as pd
 import urllib
@@ -77,26 +78,32 @@ class LLMHelper:
         self.presence_penalty: float = float(os.getenv("OPENAI_PRESENCE_PENALTY", 0)) if presence_penalty is None else presence_penalty
         self.condense_question_prompt = CONDENSE_QUESTION_PROMPT if (condense_question_prompt is None or condense_question_prompt == '') else PromptTemplate(template=condense_question_prompt, input_variables=["chat_history", "question"])
         self.completion_prompt = COMPLETION_PROMPT if (completion_prompt is None or completion_prompt == '') else PromptTemplate(template=completion_prompt, input_variables=["summaries", "question"])
+        self.vector_store_type = os.getenv("VECTOR_STORE_TYPE")
 
-        # Vector store settings
-        self.vector_store_address: str = os.getenv('REDIS_ADDRESS', "localhost")
-        self.vector_store_port: int = int(os.getenv('REDIS_PORT', 6379))
-        self.vector_store_protocol: str = os.getenv("REDIS_PROTOCOL", "redis://")
-        self.vector_store_password: str = os.getenv("REDIS_PASSWORD", None)
-        self.k: int = int(os.getenv("REDISEARCH_TOP_K", 4)) if k is None else k
-        self.score_threshold: float = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2)) if score_threshold is None else score_threshold
-        self.search_type: str = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit") if search_type is None else search_type
-        if self.vector_store_password:
-            self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}"
+        # Azure Search settings
+        if self.vector_store_type == "AzureSearch":
+            self.vector_store_address: str = os.getenv('AZURE_SEARCH_SERVICE_NAME')
+            self.vector_store_password: str = os.getenv('AZURE_SEARCH_ADMIN_KEY')
+
         else:
-            self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}"
+            # Vector store settings
+            self.vector_store_address: str = os.getenv('REDIS_ADDRESS', "localhost")
+            self.vector_store_port: int = int(os.getenv('REDIS_PORT', 6379))
+            self.vector_store_protocol: str = os.getenv("REDIS_PROTOCOL", "redis://")
+            self.vector_store_password: str = os.getenv("REDIS_PASSWORD", None)
+            self.k: int = int(os.getenv("REDISEARCH_TOP_K", 4)) if k is None else k
+            self.score_threshold: float = float(os.getenv("REDISEARCH_SCORE_THRESHOLD", 0.2)) if score_threshold is None else score_threshold
+            self.search_type: str = os.getenv("REDISEARCH_SEARCH_TYPE", "similarity_limit") if search_type is None else search_type
+            if self.vector_store_password:
+                self.vector_store_full_address = f"{self.vector_store_protocol}:{self.vector_store_password}@{self.vector_store_address}:{self.vector_store_port}"
+            else:
+                self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}"
 
         self.chunk_size = int(os.getenv('CHUNK_SIZE', 500))
         self.chunk_overlap = int(os.getenv('CHUNK_OVERLAP', 100))
         self.document_loaders: BaseLoader = WebBaseLoader if document_loaders is None else document_loaders
         self.text_splitter: TextSplitter = TokenTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
         self.embeddings: OpenAIEmbeddings = OpenAIEmbeddings(model=self.model, chunk_size=1) if embeddings is None else embeddings
-        self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store
         if self.deployment_type == "Chat":
             self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name,
                                               temperature=self.temperature,
@@ -110,6 +117,11 @@ class LLMHelper:
                                                 frequency_penalty=self.frequency_penalty,
                                                 presence_penalty=self.presence_penalty
                                                 ) if llm is None else llm
+
+        if self.vector_store_type == "AzureSearch":
+            self.vector_store: VectorStore = AzureSearch(azure_cognitive_search_name=self.vector_store_address, azure_cognitive_search_key=self.vector_store_password, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store
+        else:
+            self.vector_store: RedisExtended = RedisExtended(redis_url=self.vector_store_full_address, index_name=self.index_name, embedding_function=self.embeddings.embed_query) if vector_store is None else vector_store
 
         self.pdf_parser: AzureFormRecognizerClient = AzureFormRecognizerClient() if pdf_parser is None else pdf_parser
         self.blob_client: AzureBlobStorageClient = AzureBlobStorageClient() if blob_client is None else blob_client
@@ -151,7 +163,12 @@ class LLMHelper:
                 keys.append(hash_key)
                 doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)", "chunk": i, "key": hash_key, "filename": filename}
                 filenames.add(filename)
-            self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
+
+            if self.vector_store_type == 'AzureSearch':
+                self.vector_store.add_documents(documents=docs, keys=keys)
+            else:
+                self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address, index_name=self.index_name, keys=keys)
+
         except Exception as e:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e

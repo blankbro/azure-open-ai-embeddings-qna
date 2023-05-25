@@ -173,7 +173,7 @@ class LLMHelper:
             logging.error(f"Error adding embeddings for {source_url}: {e}")
             raise e
 
-    def convert_file(self, bytes_data: bytes = None, source_url: str = None, filename: str = None, enable_translation=False):
+    def convert_file_and_add_embeddings(self, bytes_data: bytes, source_url, filename, enable_translation=False):
         # Extract the text from the file
         text = self.pdf_parser.analyze_read(bytes_data, source_url)
         # Translate if requested
@@ -181,17 +181,14 @@ class LLMHelper:
 
         # Upload the text to Azure Blob Storage
         converted_filename = f"converted/{filename}.txt"
-        source_url = self.blob_client.upload_file("\n".join(text), f"converted/{filename}.txt", content_type='text/plain; charset=utf-8')
+        convert_file_url = self.blob_client.upload_file("\n".join(text), f"converted/{filename}.txt", content_type='text/plain; charset=utf-8')
 
-        print(f"Converted file uploaded to {source_url} with filename {filename}")
+        print(f"Converted file uploaded to {convert_file_url} with filename {filename}")
         # Update the metadata to indicate that the file has been converted
-        self.blob_client.upsert_blob_metadata(filename, {"converted": "true", 'converted_filename': urllib.parse.quote(converted_filename)})
+        self.blob_client.upsert_blob_metadata(filename, {"converted": "true"})
 
-        return converted_filename
+        self.add_embeddings_lc(source_url=convert_file_url)
 
-    def convert_file_and_add_embeddings(self, bytes_data: bytes, source_url, filename, enable_translation=False):
-        converted_filename = self.convert_file(bytes_data, source_url, filename, enable_translation)
-        self.add_embeddings_lc(source_url=source_url)
         return converted_filename
 
     def get_all_documents(self, k: int = None):

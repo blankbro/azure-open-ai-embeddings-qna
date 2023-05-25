@@ -5,5 +5,3 @@ code/__pycache__
 code/environment.yml
 code/host.json
 code/local.settings.json
-code/pages
-code/OpenAI_Queries.py

@@ -125,24 +125,25 @@ with col1:
 
     if st.session_state['question']:
         question = st.session_state['question']
-        new_question = ""
         last_chats = get_last_chats()
-        if last_chats:
-            question_generator = LLMChain(llm=llm_helper.llm, prompt=llm_helper.condense_question_prompt, verbose=False)
-            last_chats_str = conversational_retrieval._get_chat_history(last_chats)
-            new_question = question_generator.run(question=question, chat_history=last_chats_str)
+
+        # new_question = ""
+        # if last_chats:
+        #     question_generator = LLMChain(llm=llm_helper.llm, prompt=llm_helper.condense_question_prompt, verbose=False)
+        #     last_chats_str = conversational_retrieval._get_chat_history(last_chats)
+        #     new_question = question_generator.run(question=question, chat_history=last_chats_str)
         question, result, context, sources = llm_helper.get_semantic_answer_lang_chain(question, last_chats)
         st.session_state['chat_history'].append((question, result))
         st.session_state['source_documents'].append(sources)
-        st.session_state['new_questions'].append(new_question)
+        # st.session_state['new_questions'].append(new_question)
         st.session_state['contexts'].append(context)
         st.session_state['question'] = ""
 
     if st.session_state['chat_history']:
         for i in range(len(st.session_state['chat_history']) - 1, -1, -1):
             with st.expander("Debug", expanded=False):
-                if st.session_state["new_questions"][i]:
-                    st.markdown(f'\n\nNew question: {st.session_state["new_questions"][i]}')
+                # if st.session_state["new_questions"][i]:
+                #     st.markdown(f'\n\nNew question: {st.session_state["new_questions"][i]}')
                 if st.session_state["source_documents"][i]:
                     st.markdown(f'\n\nSources: {st.session_state["source_documents"][i]}')
                 if st.session_state["contexts"][i]:

@@ -8,9 +8,9 @@ COPY ./code/ /usr/local/src/myscripts
 RUN rm -rf pages/01_Add_Document.py \
     pages/04_Index_Management.py \
     pages/10_Sandbox.py\
-    pages/10_Utils - Document_Summary.py\
-    pages/11_Utils - Conversation_Data_Extraction.py\
-    pages/12_Utils - Prompt Exploration.py\
+    pages/10_Utils\ -\ Document_Summary.py\
+    pages/11_Utils\ -\ Conversation_Data_Extraction.py\
+    pages/12_Utils\ -\ Prompt Exploration.py\
     pages/100_Chat_Debug.py\
     pages/103_Document_Viewer_Debug.py\
     pages/199_Streamlit_Test.py

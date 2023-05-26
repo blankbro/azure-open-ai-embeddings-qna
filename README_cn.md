@@ -44,12 +44,15 @@ code
 
 ```
 code
+├── ApiQnA
+│   ├── __init__.py
+│   └── function.json
 ├── BatchPushResults
-│         ├── __init__.py
-│         └── function.json
+│   ├── __init__.py
+│   └── function.json
 ├── BatchStartProcessing
-│         ├── __init__.py
-│         └── function.json
+│   ├── __init__.py
+│   └── function.json
 ├── embeddings_text.csv
 ├── requirements.txt
 └── utilities

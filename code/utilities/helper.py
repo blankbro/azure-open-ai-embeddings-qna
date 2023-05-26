@@ -28,6 +28,7 @@ from utilities.translator import AzureTranslatorClient
 from utilities.customprompt import COMPLETION_PROMPT
 from utilities.redis import RedisExtended
 from utilities.azuresearch import AzureSearch
+from utilities.custom_text_splitter import MyTokenTextSplitter
 
 import pandas as pd
 import urllib
@@ -99,10 +100,11 @@ class LLMHelper:
             else:
                 self.vector_store_full_address = f"{self.vector_store_protocol}{self.vector_store_address}:{self.vector_store_port}"
 
+        self.text_split_type = os.getenv('TEXT_SPLIT_TYPE', "default")
         self.chunk_size = int(os.getenv('CHUNK_SIZE', 500))
         self.chunk_overlap = int(os.getenv('CHUNK_OVERLAP', 100))
         self.document_loaders: BaseLoader = WebBaseLoader if document_loaders is None else document_loaders
-        self.text_splitter: TextSplitter = TokenTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
+        self.text_splitter: TextSplitter = MyTokenTextSplitter(text_split_type=self.text_split_type, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
         self.embeddings: OpenAIEmbeddings = OpenAIEmbeddings(model=self.model, chunk_size=1) if embeddings is None else embeddings
         if self.deployment_type == "Chat":
             self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name,

@@ -135,7 +135,7 @@ with col1:
             with st.expander("Debug", expanded=False):
                 if st.session_state["source_documents"][i]:
                     st.markdown(f'\n\nSources: {st.session_state["source_documents"][i]}')
-                if st.session_state["contexts"][i]:
+                if len(st.session_state["contexts"]) == len(st.session_state["source_documents"]) and st.session_state["contexts"][i]:
                     st.markdown(f'\n\nContext: {st.session_state["contexts"][i]}')
             message(st.session_state['chat_history'][i][1], key=str(i))
             message(st.session_state['chat_history'][i][0], is_user=True, key=str(i) + '_user')

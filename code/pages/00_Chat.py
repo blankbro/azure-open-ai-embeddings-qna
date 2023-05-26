@@ -12,6 +12,7 @@ def send_msg():
         question, result, _, sources = llm_helper.get_semantic_answer_lang_chain(st.session_state['input'], st.session_state['chat_history'])
         st.session_state['chat_history'].append((question, result))
         st.session_state['source_documents'].append(sources)
+        st.session_state['input'] = ""
 
 # Initialize chat history
 if 'question' not in st.session_state:

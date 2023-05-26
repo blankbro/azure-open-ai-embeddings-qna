@@ -22,7 +22,7 @@ def send_msg():
         st.session_state['chat_history'].append((question, result))
         st.session_state['source_documents'].append(sources)
         st.session_state['contexts'].append(context)
-        st.session_state['question'] = ""
+        st.session_state['input'] = ""
 
 
 def get_last_chats(count: int = 10):
@@ -75,8 +75,6 @@ def check_variables_in_completion_prompt():
 st.set_page_config(layout="wide")
 
 # Initialize chat history
-if 'question' not in st.session_state:
-    st.session_state['question'] = ""
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 if 'source_documents' not in st.session_state:

@@ -9,16 +9,20 @@ from langchain.chains.llm import LLMChain
 import langchain.chains.conversational_retrieval.base as conversational_retrieval
 
 
-def clear_text_input():
-    st.session_state['question'] = st.session_state['input']
-    st.session_state['input'] = ""
-
-
 def clear_chat_data():
     st.session_state['input'] = ""
-    st.session_state['question'] = ""
     st.session_state['chat_history'] = []
     st.session_state['source_documents'] = []
+
+
+def send_msg():
+    if st.session_state['input']:
+        last_chats = get_last_chats()
+        question, result, context, sources = llm_helper.get_semantic_answer_lang_chain(st.session_state['input'], last_chats)
+        st.session_state['chat_history'].append((question, result))
+        st.session_state['source_documents'].append(sources)
+        st.session_state['contexts'].append(context)
+        st.session_state['question'] = ""
 
 
 def get_last_chats(count: int = 10):
@@ -119,31 +123,18 @@ available_languages = get_languages()
 
 col1, col2 = st.columns([3, 1])
 with col1:
-    # Chat
-    st.text_input("You: ", placeholder="type your question", key="input", on_change=clear_text_input)
-    clear_chat = st.button("Clear chat", key="clear_chat", on_click=clear_chat_data)
-
-    if st.session_state['question']:
-        question = st.session_state['question']
-        last_chats = get_last_chats()
-
-        # new_question = ""
-        # if last_chats:
-        #     question_generator = LLMChain(llm=llm_helper.llm, prompt=llm_helper.condense_question_prompt, verbose=False)
-        #     last_chats_str = conversational_retrieval._get_chat_history(last_chats)
-        #     new_question = question_generator.run(question=question, chat_history=last_chats_str)
-        question, result, context, sources = llm_helper.get_semantic_answer_lang_chain(question, last_chats)
-        st.session_state['chat_history'].append((question, result))
-        st.session_state['source_documents'].append(sources)
-        # st.session_state['new_questions'].append(new_question)
-        st.session_state['contexts'].append(context)
-        st.session_state['question'] = ""
+    col1_col1, col1_col2 = st.columns([7, 1])
+    with col1_col1:
+        st.text_input("You: ", placeholder="type your question", key="input")
+        clear_chat = st.button("Clear chat", key="clear_chat", on_click=clear_chat_data)
+    with col1_col2:
+        st.text("")
+        st.text("")
+        st.button("Send", on_click=send_msg)
 
     if st.session_state['chat_history']:
         for i in range(len(st.session_state['chat_history']) - 1, -1, -1):
             with st.expander("Debug", expanded=False):
-                # if st.session_state["new_questions"][i]:
-                #     st.markdown(f'\n\nNew question: {st.session_state["new_questions"][i]}')
                 if st.session_state["source_documents"][i]:
                     st.markdown(f'\n\nSources: {st.session_state["source_documents"][i]}')
                 if st.session_state["contexts"][i]:
@@ -151,6 +142,8 @@ with col1:
             message(st.session_state['chat_history'][i][1], key=str(i))
             message(st.session_state['chat_history'][i][0], is_user=True, key=str(i) + '_user')
 with col2:
+    st.text("")
+    st.text("")
     with st.expander("Settings", expanded=True):
         # model = st.selectbox(
         #     "OpenAI GPT-3 Model",

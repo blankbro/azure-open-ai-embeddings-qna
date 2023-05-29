@@ -210,13 +210,6 @@ class LLMHelper:
         # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
         llm_chain_custom_handler = LLMChainCallbackHandler()
         question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=True, callback_manager=CallbackManager(handlers=[llm_chain_custom_handler]))
-        '''
-        chain_type 说明
-            "stuff"：这个枚举值可能表示程序将对数据进行一些预处理，以便后续的处理更加高效。
-            "map_reduce"：这个枚举值可能表示程序将使用 MapReduce 算法进行数据处理。这种算法通常适用于大规模数据集，可以在分布式计算环境中运行。
-            "map_rerank"：这个枚举值可能表示程序将使用 MapRerank 算法进行数据处理。这种算法通常用于对搜索结果进行排序，以便展示最相关的结果。
-            "refine"：这个枚举值可能表示程序将对数据进行进一步的精细处理，以提高输出结果的质量。
-        '''
         doc_chain = load_qa_with_sources_chain(self.llm, chain_type="stuff", verbose=True, prompt=self.completion_prompt)
         chain = ConversationalRetrievalChain(
             retriever=self.vector_store.as_retriever(k=self.k, score_threshold=self.score_threshold, search_type=self.search_type),

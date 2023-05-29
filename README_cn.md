@@ -1,3 +1,19 @@
+一个简单的web应用程序，用于支持OpenAI的文档搜索。这个repo使用Azure OpenAI服务从文档中创建嵌入向量。为了回答用户的问题，它检索最相关的文档，然后使用GPT-3提取问题的匹配答案。 
+
+如果你对ChatPDF不了解，推荐阅读[这个](https://zhuanlan.zhihu.com/p/613489282)。
+
+Azure 资源
+
+- BLOB_ACCOUNT
+- 表单识别器
+- 向量数据库
+- GPT模型
+
+Python 应用
+
+- Web应用
+
+
 # WebApp（交互页面）
 
 现成的 Docker 镜像：fruocco/oai-embeddings
@@ -82,6 +98,9 @@ docker rm -f webapp
 # 启动新应用
 docker run -d --env-file .env -p 8081:80 --name webapp azure-open-ai-embeddings-qna 
 
+# 清除未被使用的镜像及其数据
+docker image prune -a 
+
 # ====== 用户部署
 # 删除旧镜像
 docker image rm -f azure-open-ai-embeddings-qna:user
@@ -94,5 +113,8 @@ docker build . -f WebApp-User.Dockerfile -t azure-open-ai-embeddings-qna:user
 docker rm -f webapp-user
 
 # 启动新应用
-docker run -d --env-file .env -p 8080:80 --name webapp-user azure-open-ai-embeddings-qna:user 
+docker run -d --env-file .env -p 8080:80 --name webapp-user azure-open-ai-embeddings-qna:user
+
+# 清除未被使用的镜像及其数据
+docker image prune -a 
 ```

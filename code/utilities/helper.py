@@ -21,6 +21,8 @@ from langchain.document_loaders.base import BaseLoader
 from langchain.document_loaders import TextLoader
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain.callbacks.shared import SharedCallbackManager
+from pydantic import BaseModel, Field, validator
 
 from utilities.formrecognizer import AzureFormRecognizerClient
 from utilities.azureblobstorage import AzureBlobStorageClient
@@ -33,6 +35,7 @@ from utilities.custom_text_splitter import MyTokenTextSplitter
 import pandas as pd
 import urllib
 import utilities.myutil as myutil
+from utilities.custom_handler import CustomHandler
 
 from fake_useragent import UserAgent
 
@@ -205,6 +208,8 @@ class LLMHelper:
 
     def get_semantic_answer_lang_chain(self, question, chat_history):
         # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
+
+        # callback_manager = Field(default_factory=SharedCallbackManager().add_handler(CustomHandler()), exclude=True)
         question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=False)
         '''
         chain_type 说明

@@ -13,6 +13,8 @@ RUN rm -rf pages/01_Add_Document.py \
     pages/12_Utils\ -\ Prompt\ Exploration.py\
     pages/100_Chat_Debug.py\
     pages/103_Document_Viewer_Debug.py\
-    pages/199_Streamlit_Test.py
+    pages/199_Streamlit_Test.py\
+    OpenAI_Queries.py \
+RUN mv pages/00_Chat.py 00_Chat.py
 EXPOSE 80
-CMD ["streamlit", "run", "OpenAI_Queries.py", "--server.port", "80", "--server.enableXsrfProtection", "false"]
+CMD ["streamlit", "run", "00_Chat.py", "--server.port", "80", "--server.enableXsrfProtection", "false"]

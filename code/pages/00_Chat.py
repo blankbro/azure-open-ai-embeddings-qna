@@ -22,7 +22,7 @@ if 'chat_history' not in st.session_state:
 if 'source_documents' not in st.session_state:
     st.session_state['source_documents'] = []
 
-llm_helper = LLMHelper()
+llm_helper = LLMHelper(temperature=0.2)
 
 col1, col2 = st.columns([9, 1])
 with col1:

@@ -4,7 +4,7 @@ from typing import (Any, List, )
 from langchain.text_splitter import (TokenTextSplitter)
 
 
-class MyTokenTextSplitter(TokenTextSplitter):
+class CustomTextSplitter(TokenTextSplitter):
 
     def __init__(self, text_split_type: str = "default", **kwargs: Any):
         super().__init__(**kwargs)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     chunk_size = 500
     chunk_overlap = 100
 
-    myTokenTextSplitter: MyTokenTextSplitter = MyTokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    myTokenTextSplitter: CustomTextSplitter = CustomTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     tokenTextSplitter: TokenTextSplitter = TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
 

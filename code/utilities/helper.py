@@ -30,12 +30,12 @@ from utilities.translator import AzureTranslatorClient
 from utilities.customprompt import COMPLETION_PROMPT
 from utilities.redis import RedisExtended
 from utilities.azuresearch import AzureSearch
-from utilities.custom_text_splitter import MyTokenTextSplitter
+from utilities.custom_text_splitter import CustomTextSplitter
 
 import pandas as pd
 import urllib
 import utilities.myutil as myutil
-from utilities.custom_handler import LLMChainCustomHandler
+from utilities.custom_handler import LLMChainCallbackHandler
 
 from fake_useragent import UserAgent
 
@@ -107,7 +107,7 @@ class LLMHelper:
         self.chunk_size = int(os.getenv('CHUNK_SIZE', 500))
         self.chunk_overlap = int(os.getenv('CHUNK_OVERLAP', 100))
         self.document_loaders: BaseLoader = WebBaseLoader if document_loaders is None else document_loaders
-        self.text_splitter: TextSplitter = MyTokenTextSplitter(text_split_type=self.text_split_type, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
+        self.text_splitter: TextSplitter = CustomTextSplitter(text_split_type=self.text_split_type, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap) if text_splitter is None else text_splitter
         self.embeddings: OpenAIEmbeddings = OpenAIEmbeddings(model=self.model, chunk_size=1) if embeddings is None else embeddings
         if self.deployment_type == "Chat":
             self.llm: ChatOpenAI = ChatOpenAI(model_name=self.deployment_name, engine=self.deployment_name,
@@ -208,7 +208,7 @@ class LLMHelper:
 
     def get_semantic_answer_lang_chain(self, question, chat_history):
         # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
-        llm_chain_custom_handler = LLMChainCustomHandler()
+        llm_chain_custom_handler = LLMChainCallbackHandler()
         question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=True, callback_manager=CallbackManager(handlers=[llm_chain_custom_handler]))
         '''
         chain_type 说明

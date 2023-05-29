@@ -7,7 +7,7 @@ from langchain.schema import AgentFinish, AgentAction, LLMResult
 class LLMChainCustomHandler(BaseCallbackHandler):
 
     def __init__(self):
-        self.new_question = ""
+        self.new_question = None
 
     def get_new_question(self):
         return self.new_question

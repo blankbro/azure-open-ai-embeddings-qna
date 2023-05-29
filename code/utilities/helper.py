@@ -21,7 +21,7 @@ from langchain.document_loaders.base import BaseLoader
 from langchain.document_loaders import TextLoader
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from langchain.callbacks.shared import SharedCallbackManager
+from langchain.callbacks.base import CallbackManager
 from pydantic import BaseModel, Field, validator
 
 from utilities.formrecognizer import AzureFormRecognizerClient
@@ -35,7 +35,7 @@ from utilities.custom_text_splitter import MyTokenTextSplitter
 import pandas as pd
 import urllib
 import utilities.myutil as myutil
-from utilities.custom_handler import CustomHandler
+from utilities.custom_handler import LLMChainCustomHandler
 
 from fake_useragent import UserAgent
 
@@ -208,9 +208,8 @@ class LLMHelper:
 
     def get_semantic_answer_lang_chain(self, question, chat_history):
         # CONDENSE_QUESTION_PROMPT: 重新生成{问题}的Prompt，根据{聊天记录}和{提问}，将{问题}重新表述为一个独立的问题。
-
-        # callback_manager = Field(default_factory=SharedCallbackManager().add_handler(CustomHandler()), exclude=True)
-        question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=False)
+        llm_chain_custom_handler = LLMChainCustomHandler()
+        question_generator = LLMChain(llm=self.llm, prompt=self.condense_question_prompt, verbose=True, callback_manager=CallbackManager(handlers=[llm_chain_custom_handler]))
         '''
         chain_type 说明
             "stuff"：这个枚举值可能表示程序将对数据进行一些预处理，以便后续的处理更加高效。
@@ -235,7 +234,7 @@ class LLMHelper:
         # result['answer'] = result['answer'].split('SOURCES:')[0].split('Sources:')[0].split('SOURCE:')[0].split('Source:')[0]
         sources = sources.replace('_SAS_TOKEN_PLACEHOLDER_', container_sas)
 
-        return question, result['answer'], context, sources
+        return question, result['answer'], context, sources, llm_chain_custom_handler.get_new_question()
 
     def get_embeddings_model(self):
         OPENAI_EMBEDDINGS_ENGINE_DOC = os.getenv('OPENAI_EMEBDDINGS_ENGINE', os.getenv('OPENAI_EMBEDDINGS_ENGINE_DOC', 'text-embedding-ada-002'))

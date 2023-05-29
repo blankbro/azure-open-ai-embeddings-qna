@@ -12,14 +12,17 @@ import langchain.chains.conversational_retrieval.base as conversational_retrieva
 def clear_chat_data():
     st.session_state['input'] = ""
     st.session_state['chat_history'] = []
+    st.session_state['new_question'] = []
     st.session_state['source_documents'] = []
+    st.session_state['contexts'] = []
 
 
 def send_msg():
     if st.session_state['input']:
         last_chats = get_last_chats()
-        question, result, context, sources = llm_helper.get_semantic_answer_lang_chain(st.session_state['input'], last_chats)
+        question, result, context, sources, new_question = llm_helper.get_semantic_answer_lang_chain(st.session_state['input'], last_chats)
         st.session_state['chat_history'].append((question, result))
+        st.session_state['new_question'].append(new_question)
         st.session_state['source_documents'].append(sources)
         st.session_state['contexts'].append(context)
         st.session_state['input'] = ""
@@ -133,6 +136,8 @@ with col1:
     if st.session_state['chat_history']:
         for i in range(len(st.session_state['chat_history']) - 1, -1, -1):
             with st.expander("Debug", expanded=False):
+                if len(st.session_state["new_question"]) == len(st.session_state["source_documents"]) and st.session_state["new_question"][i]:
+                    st.markdown(f'\n\nNew question: {st.session_state["new_question"][i]}')
                 if st.session_state["source_documents"][i]:
                     st.markdown(f'\n\nSources: {st.session_state["source_documents"][i]}')
                 if len(st.session_state["contexts"]) == len(st.session_state["source_documents"]) and st.session_state["contexts"][i]:

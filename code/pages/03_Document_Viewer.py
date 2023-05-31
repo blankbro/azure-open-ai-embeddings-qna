@@ -14,7 +14,7 @@ try:
 	Document Reader Sample Demo.
 	'''
     }
-    st.set_page_config(layout="wide", menu_items=menu_items)
+    st.set_page_config(layout="wide", page_title=os.getenv("page_title"), page_icon=os.path.join('images', 'openai.png'), menu_items=menu_items)
 
     hide_streamlit_style = """
                 <style>

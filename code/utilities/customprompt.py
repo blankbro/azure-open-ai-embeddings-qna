@@ -11,11 +11,11 @@ Standalone question:"""
 CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(condense_question_prompt_template)
 
 # COMPLETION_PROMPT
+# Include references to the sources you used to create the answer if those are relevant ("SOURCES").
 completion_prompt_template = """{summaries}
 Please reply to the question using only the information present in the text above. 
-Include references to the sources you used to create the answer if those are relevant ("SOURCES"). 
 If you can't find it, reply politely that the information is not in the knowledge base.
-Reply in 中文
+Reply in 中文.
 Question: {question}
 Answer:"""
 

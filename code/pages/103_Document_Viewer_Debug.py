@@ -50,7 +50,7 @@ try:
                 st.write(f"{now_date_time()}【{i}】{filename} 完成了")
             elif file_data.get("embeddings_added") is False:
                 st.write(f"{now_date_time()}【{i}】{filename} 开始生成 embeddings向量")
-                llm_helper.add_embeddings_lc(file_data["converted_path"])
+                llm_helper.add_embeddings_lc(file_data["fullpath"])
                 llm_helper.blob_client.upsert_blob_metadata(filename, {'embeddings_added': 'true'})
                 st.write(f"{now_date_time()}【{i}】{filename} 完成了")
         st.write("所有文件已处理完成")
